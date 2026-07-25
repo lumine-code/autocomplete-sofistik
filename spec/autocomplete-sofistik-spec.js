@@ -53,8 +53,19 @@ describe("autocomplete-sofistik", () => {
 
   it("exposes an autocomplete provider scoped to SOFiSTiK sources", () => {
     expect(provider).toBeDefined();
-    expect(provider.selector).toBe(".source.sofistik");
+    expect(provider.scopeSelector).toBe(".source.sofistik");
     expect(typeof provider.getSuggestions).toBe("function");
+  });
+
+  it("registers with the bundled autocomplete package through the services hub", async () => {
+    atom.notifications.clear();
+    const pack = await atom.packages.activatePackage("autocomplete");
+    const { providerManager } = pack.mainModule.autocompleteManager;
+    expect(providerManager.metadataForProvider(provider)).toBeTruthy();
+    const errors = atom.notifications
+      .getNotifications()
+      .filter((notification) => notification.getType() === "error");
+    expect(errors).toEqual([]);
   });
 
   it("suggests module names after +prog", () => {
