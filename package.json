@@ -1,7 +1,7 @@
 {
   "name": "autocomplete-sofistik",
   "author": "lumine-code",
-  "description": "Get hints as you type the SOFiSTiK input",
+  "description": "Autocompletion for SOFiSTiK modules, commands, and parameters.",
   "repository": "https://github.com/lumine-code/autocomplete-sofistik",
   "bugs": {
     "url": "https://github.com/lumine-code/autocomplete-sofistik/issues"

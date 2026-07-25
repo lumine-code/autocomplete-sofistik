@@ -1,6 +1,8 @@
 # autocomplete-sofistik
 
-Get hints as you type the SOFiSTiK input. Provides intelligent autocomplete suggestions for SOFiSTiK modules, commands, and parameters.
+Autocompletion for SOFiSTiK modules, commands, and parameters.
+
+Get hints as you type the SOFiSTiK input.
 
 ## Features
 
