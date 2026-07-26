@@ -28,14 +28,14 @@
   "providedServices": {
     "autocomplete.provider": {
       "versions": {
-        "1.0.0": "getProvider"
+        "1.0.0": "provideAutocomplete"
       }
     }
   },
   "consumedServices": {
     "sofistik.keywords": {
       "versions": {
-        "^1.0.0": "consumeKeywordsService"
+        "^1.0.0": "consumeSofistikKeywords"
       }
     }
   },

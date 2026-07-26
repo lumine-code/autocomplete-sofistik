@@ -46,8 +46,8 @@ describe("autocomplete-sofistik", () => {
   beforeEach(async () => {
     const pack = await atom.packages.activatePackage("autocomplete-sofistik");
     mainModule = pack.mainModule;
-    mainModule.consumeKeywordsService(createMockKeywordsService());
-    provider = mainModule.getProvider();
+    mainModule.consumeSofistikKeywords(createMockKeywordsService());
+    provider = mainModule.provideAutocomplete();
     editor = await atom.workspace.open("test.dat");
   });
 
@@ -109,7 +109,7 @@ describe("autocomplete-sofistik", () => {
   });
 
   it("returns no suggestions when the keywords service is missing", () => {
-    mainModule.consumeKeywordsService(createMockKeywordsService()).dispose();
+    mainModule.consumeSofistikKeywords(createMockKeywordsService()).dispose();
     const suggestions = suggestionsAt("+prog a", 0, 7, "a");
     expect(suggestions).toEqual([]);
   });
