@@ -21,8 +21,8 @@ This package requires [language-sofistik](https://github.com/lumine-code/languag
 
 ## Services
 
-- **[autocomplete.provider](https://lumine-code.github.io/docs.html#services/autocomplete.provider)** (`1.0.0`): provided to the autocomplete system to supply SOFiSTiK suggestions in `source.sofistik` files.
-- **[sofistik.keywords](https://lumine-code.github.io/docs.html#services/sofistik.keywords)** (`^1.0.0`): consumed to read version- and language-aware SOFiSTiK keyword data from `language-sofistik`.
+- **autocomplete.provider** (`1.0.0`): provided to the autocomplete system to supply SOFiSTiK suggestions in `source.sofistik` files.
+- **sofistik.keywords** (`^1.0.0`): consumed to read version- and language-aware SOFiSTiK keyword data from `language-sofistik`.
 
 ## Contributing
 
