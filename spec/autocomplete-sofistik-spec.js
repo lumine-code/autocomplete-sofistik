@@ -44,11 +44,11 @@ describe("autocomplete-sofistik", () => {
   }
 
   beforeEach(async () => {
-    const pack = await atom.packages.activatePackage("autocomplete-sofistik");
+    const pack = await lumine.packages.activatePackage("autocomplete-sofistik");
     mainModule = pack.mainModule;
     mainModule.consumeSofistikKeywords(createMockKeywordsService());
     provider = mainModule.provideAutocomplete();
-    editor = await atom.workspace.open("test.dat");
+    editor = await lumine.workspace.open("test.dat");
   });
 
   it("exposes an autocomplete provider scoped to SOFiSTiK sources", () => {
@@ -58,11 +58,11 @@ describe("autocomplete-sofistik", () => {
   });
 
   it("registers with the bundled autocomplete package through the services hub", async () => {
-    atom.notifications.clear();
-    const pack = await atom.packages.activatePackage("autocomplete");
+    lumine.notifications.clear();
+    const pack = await lumine.packages.activatePackage("autocomplete");
     const { providerManager } = pack.mainModule.autocompleteManager;
     expect(providerManager.metadataForProvider(provider)).toBeTruthy();
-    const errors = atom.notifications
+    const errors = lumine.notifications
       .getNotifications()
       .filter((notification) => notification.getType() === "error");
     expect(errors).toEqual([]);
@@ -115,7 +115,7 @@ describe("autocomplete-sofistik", () => {
   });
 
   it("honors the lowercase suggestions setting", () => {
-    atom.config.set("autocomplete-sofistik.textCase", false);
+    lumine.config.set("autocomplete-sofistik.textCase", false);
     const suggestions = suggestionsAt("+prog a", 0, 7, "a");
     expect(suggestions.map((s) => s.text)).toEqual(["aqua"]);
   });
