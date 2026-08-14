@@ -2,7 +2,7 @@
 
 Autocompletion for SOFiSTiK modules, commands, and parameters.
 
-Get hints as you type the SOFiSTiK input.
+> **NOTE**: This package is not an official SOFiSTiK product and is not affiliated with or endorsed by SOFiSTiK AG.
 
 ## Features
 
@@ -15,14 +15,13 @@ Get hints as you type the SOFiSTiK input.
 
 ## Installation
 
-To install `autocomplete-sofistik` search for _autocomplete-sofistik_ in the Install pane of the Lumine settings or run `lumine --install lumine-code/autocomplete-sofistik`.
-
-This package requires [language-sofistik](https://github.com/lumine-code/language-sofistik).
+To install `autocomplete-sofistik` search for it in the Install pane of the Lumine settings, or run the command `lumine --install lumine-code/autocomplete-sofistik`.
 
 ## Services
 
-- **autocomplete.provider** (`1.0.0`): provided to the autocomplete system to supply SOFiSTiK suggestions in `source.sofistik` files.
-- **sofistik.keywords** (`^1.0.0`): consumed to read version- and language-aware SOFiSTiK keyword data from `language-sofistik`.
+- `autocomplete.provider`: provided to the autocomplete system to supply SOFiSTiK suggestions in `source.sofistik` files.
+- `sofistik.keywords`: consumed to read the SOFiSTiK keyword data a release ships.
+- `sofistik.environment`: consumed to resolve which release and language a file is for, so suggestions match what the linter and the tooling use.
 
 ## Contributing
 

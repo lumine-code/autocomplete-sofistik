@@ -41,6 +41,11 @@
       "versions": {
         "^1.0.0": "consumeSofistikKeywords"
       }
+    },
+    "sofistik.environment": {
+      "versions": {
+        "^1.0.0": "consumeSofistikEnvironment"
+      }
     }
   },
   "configSchema": {

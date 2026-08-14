@@ -1,7 +1,8 @@
-// The provider consumes the `sofistik.keywords` service from language-sofistik.
-// The specs feed a small mock of that service (same shape as the real
-// SofistikKeywordsProvider: withContext() -> context with keyword accessors),
-// so the suite runs without the language package installed.
+// The provider consumes two services: `sofistik.keywords` from language-sofistik
+// for the words, and `sofistik.environment` for which release a file is for.
+// The specs feed small mocks of both (same shape as the real providers:
+// forRelease() -> keywords bound to a release, resolve() -> that release), so
+// the suite runs without either package installed.
 
 const KEYWORDS = {
   BASIC: {
@@ -12,6 +13,14 @@ const KEYWORDS = {
     SECT: { NO: null, MNO: null },
   },
 };
+
+function createMockEnvironmentService(version = "2026", language = "en") {
+  return {
+    name: "sofistik-environment",
+    version: "1.0.0",
+    provider: { resolve: () => ({ version, language }) },
+  };
+}
 
 function createMockKeywordsService() {
   const context = {
@@ -27,7 +36,7 @@ function createMockKeywordsService() {
   return {
     name: "sofistik-keywords",
     version: "1.0.0",
-    provider: { withContext: () => context },
+    provider: { forRelease: () => context },
   };
 }
 
@@ -46,6 +55,7 @@ describe("autocomplete-sofistik", () => {
   beforeEach(async () => {
     const pack = await lumine.packages.activatePackage("autocomplete-sofistik");
     mainModule = pack.mainModule;
+    mainModule.consumeSofistikEnvironment(createMockEnvironmentService());
     mainModule.consumeSofistikKeywords(createMockKeywordsService());
     provider = mainModule.provideAutocomplete();
     editor = await lumine.workspace.open("test.dat");
@@ -112,6 +122,38 @@ describe("autocomplete-sofistik", () => {
     mainModule.consumeSofistikKeywords(createMockKeywordsService()).dispose();
     const suggestions = suggestionsAt("+prog a", 0, 7, "a");
     expect(suggestions).toEqual([]);
+  });
+
+  it("asks the environment which release the suggestions are for", () => {
+    const asked = [];
+    mainModule.consumeSofistikEnvironment({
+      name: "sofistik-environment",
+      version: "1.0.0",
+      provider: {
+        resolve(context) {
+          asked.push(context);
+          return { version: "2022", language: "de" };
+        },
+      },
+    });
+    const releases = [];
+    mainModule.consumeSofistikKeywords({
+      name: "sofistik-keywords",
+      version: "1.0.0",
+      provider: {
+        forRelease(version, language) {
+          releases.push({ version, language });
+          return createMockKeywordsService().provider.forRelease();
+        },
+      },
+    });
+
+    suggestionsAt("+prog aqua\nsect ", 1, 5, "");
+    // The completion must not decide the release itself, or it will offer words
+    // the linter rejects and the tooling will not run.
+    expect(releases.at(-1)).toEqual({ version: "2022", language: "de" });
+    // And it asks about the file being completed, not about whatever is active.
+    expect(asked.some((context) => context.editor === editor)).toBe(true);
   });
 
   it("honors the lowercase suggestions setting", () => {
