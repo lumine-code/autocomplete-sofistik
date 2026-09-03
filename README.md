@@ -20,8 +20,7 @@ To install `autocomplete-sofistik` search for it in the Install pane of the Lumi
 ## Services
 
 - `autocomplete.provider`: provided to the autocomplete system to supply SOFiSTiK suggestions in `source.sofistik` files.
-- `sofistik.keywords`: consumed to read the SOFiSTiK keyword data a release ships.
-- `sofistik.environment`: consumed to resolve which release and language a file is for, so suggestions match what the linter and the tooling use.
+- `sofistik.environment`: consumed to obtain the release-bound completion data for each file, so suggestions match what the linter and the tooling use.
 
 ## Contributing
 

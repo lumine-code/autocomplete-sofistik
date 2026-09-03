@@ -1,10 +1,8 @@
-// The provider consumes two services: `sofistik.keywords` from language-sofistik
-// for the words, and `sofistik.environment` for which release a file is for.
-// The specs feed small mocks of both (same shape as the real providers:
-// forRelease() -> keywords bound to a release, resolve() -> that release), so
-// the suite runs without either package installed.
+// The provider consumes `sofistik.environment`, which returns completion data
+// bound to the release and language of the requested editor. The specs feed a
+// small mock of that service, so the suite runs without it installed.
 
-const KEYWORDS = {
+const CATALOGUE = {
   BASIC: {
     CTRL: { OPT: ["WARP", "AXIA"], VAL: null },
   },
@@ -14,29 +12,24 @@ const KEYWORDS = {
   },
 };
 
-function createMockEnvironmentService(version = "2026", language = "en") {
+function createReleaseKeywords(catalogue = CATALOGUE) {
   return {
-    name: "sofistik-environment",
-    version: "1.0.0",
-    provider: { resolve: () => ({ version, language }) },
+    getVersion: () => "2026",
+    getLanguage: () => "en",
+    getKeywords: () => catalogue,
+    getModuleKeywords: (name) => catalogue[name] || null,
+    getModuleNames: () => Object.keys(catalogue),
+    getModuleCommands: (name) => (catalogue[name] ? Object.keys(catalogue[name]) : []),
+    getCommandParams: (name, cmd) =>
+      catalogue[name] && catalogue[name][cmd] ? Object.keys(catalogue[name][cmd]) : [],
   };
 }
 
-function createMockKeywordsService() {
-  const context = {
-    getVersion: () => "2026",
-    getLanguage: () => "en",
-    getKeywords: () => KEYWORDS,
-    getModuleKeywords: (name) => KEYWORDS[name] || null,
-    getModuleNames: () => Object.keys(KEYWORDS),
-    getModuleCommands: (name) => (KEYWORDS[name] ? Object.keys(KEYWORDS[name]) : []),
-    getCommandParams: (name, cmd) =>
-      KEYWORDS[name] && KEYWORDS[name][cmd] ? Object.keys(KEYWORDS[name][cmd]) : [],
-  };
+function createMockEnvironmentService(context = createReleaseKeywords()) {
   return {
-    name: "sofistik-keywords",
+    name: "sofistik-environment",
     version: "1.0.0",
-    provider: { forRelease: () => context },
+    provider: { getKeywordContext: () => context },
   };
 }
 
@@ -56,7 +49,6 @@ describe("autocomplete-sofistik", () => {
     const pack = await lumine.packages.activatePackage("autocomplete-sofistik");
     mainModule = pack.mainModule;
     mainModule.consumeSofistikEnvironment(createMockEnvironmentService());
-    mainModule.consumeSofistikKeywords(createMockKeywordsService());
     provider = mainModule.provideAutocomplete();
     editor = await lumine.workspace.open("test.dat");
   });
@@ -118,42 +110,54 @@ describe("autocomplete-sofistik", () => {
     }
   });
 
-  it("returns no suggestions when the keywords service is missing", () => {
-    mainModule.consumeSofistikKeywords(createMockKeywordsService()).dispose();
+  it("consumes only the environment service", () => {
+    const manifest = require("../package.json");
+    expect(manifest.version).toBe("1.0.0");
+    expect(Object.keys(manifest.consumedServices)).toEqual(["sofistik.environment"]);
+  });
+
+  it("returns no suggestions when the environment provider is missing", () => {
+    mainModule.consumeSofistikEnvironment(createMockEnvironmentService()).dispose();
     const suggestions = suggestionsAt("+prog a", 0, 7, "a");
     expect(suggestions).toEqual([]);
   });
 
-  it("asks the environment which release the suggestions are for", () => {
+  it("returns no suggestions when the environment has no keyword context", () => {
+    mainModule.consumeSofistikEnvironment(createMockEnvironmentService(null));
+    const suggestions = suggestionsAt("+prog a", 0, 7, "a");
+    expect(suggestions).toEqual([]);
+  });
+
+  it("asks the environment for the editor's release-bound keyword context", () => {
     const asked = [];
     mainModule.consumeSofistikEnvironment({
       name: "sofistik-environment",
       version: "1.0.0",
       provider: {
-        resolve(context) {
+        getKeywordContext(context) {
           asked.push(context);
-          return { version: "2022", language: "de" };
-        },
-      },
-    });
-    const releases = [];
-    mainModule.consumeSofistikKeywords({
-      name: "sofistik-keywords",
-      version: "1.0.0",
-      provider: {
-        forRelease(version, language) {
-          releases.push({ version, language });
-          return createMockKeywordsService().provider.forRelease();
+          return createReleaseKeywords();
         },
       },
     });
 
     suggestionsAt("+prog aqua\nsect ", 1, 5, "");
-    // The completion must not decide the release itself, or it will offer words
-    // the linter rejects and the tooling will not run.
-    expect(releases.at(-1)).toEqual({ version: "2022", language: "de" });
-    // And it asks about the file being completed, not about whatever is active.
-    expect(asked.some((context) => context.editor === editor)).toBe(true);
+    expect(asked.length).toBe(1);
+    expect(asked[0]).toEqual({ editor });
+  });
+
+  it("uses the keyword context returned for each request", () => {
+    let context = createReleaseKeywords();
+    mainModule.consumeSofistikEnvironment({
+      name: "sofistik-environment",
+      version: "1.0.0",
+      provider: { getKeywordContext: () => context },
+    });
+
+    expect(suggestionsAt("+prog a", 0, 7, "a").map((s) => s.text)).toEqual(["AQUA"]);
+
+    context = createReleaseKeywords({ SOFILOAD: { LC: { NO: null } } });
+    expect(suggestionsAt("+prog s", 0, 7, "s").map((s) => s.text)).toEqual(["SOFILOAD"]);
   });
 
   it("honors the lowercase suggestions setting", () => {
