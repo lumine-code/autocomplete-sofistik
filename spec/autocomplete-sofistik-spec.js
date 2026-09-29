@@ -165,4 +165,179 @@ describe("autocomplete-sofistik", () => {
     const suggestions = suggestionsAt("+prog a", 0, 7, "a");
     expect(suggestions.map((s) => s.text)).toEqual(["aqua"]);
   });
+
+  it("reuses module declarations while typing far below them", () => {
+    const text = "+prog aqua\n" + "42\n".repeat(4000) + "mat n";
+    expect(suggestionsAt(text, 4001, 5, "n").map((s) => s.text)).toEqual(["NO"]);
+    const buffer = editor.getBuffer();
+    spyOn(buffer, "scan").and.callThrough();
+    spyOn(editor, "backwardsScanInBufferRange").and.callThrough();
+
+    buffer.insert([4001, 5], "o");
+    const suggestions = provider.getSuggestions({
+      editor,
+      bufferPosition: { row: 4001, column: 6 },
+      prefix: "no",
+    });
+
+    expect(suggestions.map((s) => s.text)).toEqual(["NO"]);
+    expect(buffer.scan).not.toHaveBeenCalled();
+    for (const [, range] of editor.backwardsScanInBufferRange.calls.allArgs()) {
+      expect(range[0][0]).toBeGreaterThan(3500);
+    }
+  });
+
+  it("updates the module when its declaration is edited, inserted, or removed", () => {
+    mainModule.consumeSofistikEnvironment(
+      createMockEnvironmentService(
+        createReleaseKeywords({
+          AQUA: { MAT: { NO: null } },
+          SOFILOAD: { LC: { NO: null } },
+        }),
+      ),
+    );
+    const request = (row, prefix) =>
+      provider
+        .getSuggestions({
+          editor,
+          bufferPosition: { row, column: 1 },
+          prefix,
+        })
+        .map((s) => s.text);
+    editor.setText("+prog aqua\nM\nL");
+    expect(request(1, "M")).toEqual(["MAT"]);
+
+    const buffer = editor.getBuffer();
+    buffer.setTextInRange(
+      [
+        [0, 6],
+        [0, 10],
+      ],
+      "sofload",
+    );
+    expect(request(2, "L")).toEqual([]);
+    buffer.setTextInRange(
+      [
+        [0, 6],
+        [0, 13],
+      ],
+      "sofiload",
+    );
+    expect(request(2, "L")).toEqual(["LC"]);
+
+    buffer.insert([2, 0], "+prog aqua\n");
+    expect(request(1, "L")).toEqual(["LC"]);
+    expect(request(3, "M")).toEqual(["MAT"]);
+    buffer.delete([
+      [2, 0],
+      [3, 0],
+    ]);
+    expect(request(2, "L")).toEqual(["LC"]);
+  });
+
+  it("keeps module positions correct after several edits in one transaction", () => {
+    mainModule.consumeSofistikEnvironment(
+      createMockEnvironmentService(
+        createReleaseKeywords({
+          AQUA: { MAT: { NO: null } },
+          SOFILOAD: { LC: { NO: null } },
+        }),
+      ),
+    );
+    editor.setText("+prog aqua\nM\n+prog sofload\nL");
+    const request = (row, prefix) =>
+      provider
+        .getSuggestions({
+          editor,
+          bufferPosition: { row, column: 1 },
+          prefix,
+        })
+        .map((s) => s.text);
+    expect(request(1, "M")).toEqual(["MAT"]);
+
+    const buffer = editor.getBuffer();
+    buffer.transact(() => {
+      buffer.setTextInRange(
+        [
+          [2, 6],
+          [2, 13],
+        ],
+        "aqua",
+      );
+      buffer.setTextInRange(
+        [
+          [0, 6],
+          [0, 10],
+        ],
+        "sofiload",
+      );
+      buffer.insert([0, 0], "$ comment\n");
+    });
+    expect(request(2, "L")).toEqual(["LC"]);
+    expect(request(4, "M")).toEqual(["MAT"]);
+    buffer.undo();
+    expect(request(1, "M")).toEqual(["MAT"]);
+    expect(request(3, "L")).toEqual([]);
+    buffer.redo();
+    expect(request(4, "M")).toEqual(["MAT"]);
+  });
+
+  it("finds a preceding command beyond a search window and notices command edits", () => {
+    const text = "+prog aqua\nmat 1\n" + "42\n".repeat(700) + "42 n";
+    expect(suggestionsAt(text, 702, 4, "n").map((s) => s.text)).toEqual(["NO"]);
+    editor.getBuffer().setTextInRange(
+      [
+        [1, 0],
+        [1, 3],
+      ],
+      "ctrl",
+    );
+    expect(
+      provider
+        .getSuggestions({
+          editor,
+          bufferPosition: { row: 702, column: 4 },
+          prefix: "o",
+        })
+        .map((s) => s.text),
+    ).toEqual(["OPT"]);
+  });
+
+  it("keeps command lookup inside the current module", () => {
+    mainModule.consumeSofistikEnvironment(
+      createMockEnvironmentService(
+        createReleaseKeywords({
+          AQUA: { MAT: { NO: null } },
+          SOFILOAD: { LC: { NO: null } },
+        }),
+      ),
+    );
+    const suggestions = suggestionsAt("+prog aqua\nmat 1\n+prog sofiload\n42 n", 3, 4, "n");
+    expect(suggestions).toEqual([]);
+  });
+
+  it("keeps completion context independent for different buffers", async () => {
+    editor.setText("+prog aqua\nmat n");
+    const second = await lumine.workspace.open();
+    second.setText("+prog aqua\nctrl o");
+    const request = (target, prefix) =>
+      provider
+        .getSuggestions({
+          editor: target,
+          bufferPosition: target.getBuffer().getEndPosition(),
+          prefix,
+        })
+        .map((s) => s.text);
+    expect(request(editor, "n")).toEqual(["NO"]);
+    expect(request(second, "o")).toEqual(["OPT"]);
+    expect(request(editor, "n")).toEqual(["NO"]);
+  });
+
+  it("releases buffer subscriptions when the provider is disposed", () => {
+    suggestionsAt("+prog aqua\nmat n", 1, 5, "n");
+    spyOn(provider, "updateModuleIndex").and.callThrough();
+    provider.dispose();
+    editor.getBuffer().insert([1, 5], "o");
+    expect(provider.updateModuleIndex).not.toHaveBeenCalled();
+  });
 });
